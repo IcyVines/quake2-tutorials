@@ -292,7 +292,7 @@ void fire_shotgun (edict_t *self, vec3_t start, vec3_t aimdir, int damage, int k
 	int		i;
 
 	for (i = 0; i < count; i++)
-		fire_lead (self, start, aimdir, damage, kick, TE_SHOTGUN, hspread, vspread, mod);
+		fire_lead (self, start, aimdir, damage/2, kick*10, TE_SHOTGUN, hspread, vspread, mod);
 }
 
 
@@ -337,6 +337,20 @@ void blaster_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *
 		else
 			gi.WriteDir (plane->normal);
 		gi.multicast (self->s.origin, MULTICAST_PVS);
+
+		//RMKMOD
+		if (plane && self->owner->client) {
+			vec3_t		dir, movedir, normal;
+			VectorSubtract(self->s.origin, self->s.old_origin, movedir);
+			//VectorCopy(plane->normal, normal);
+			VectorScale(plane->normal, 2, normal);
+			VectorScale(movedir, 1 / VectorLength(movedir), movedir);
+			VectorAdd(movedir, normal, dir);
+			//gi.centerprintf(self->owner, "X: %f, Y: %f, Z: %f", dir[0],dir[1],dir[2]);
+			if (self->dmg > 3) fire_blaster(self->owner, self->s.origin, dir, self->dmg - 3, 250, EF_BLASTER, MOD_TARGET_BLASTER);
+		}
+		//RMKMOD END
+
 	}
 
 	G_FreeEdict (self);
@@ -448,6 +462,19 @@ static void Grenade_Explode (edict_t *ent)
 	}
 	gi.WritePosition (origin);
 	gi.multicast (ent->s.origin, MULTICAST_PHS);
+
+	//RMKMOD
+	if (Q_stricmp(ent->classname, "grenade") == 0) {
+		vec3_t dir;
+		for (int i = 0; i < 8; i++) {
+			dir[0] = random() > 0.5 ? random()*-1 : random();
+			dir[1] = random() > 0.5 ? random()*-1 : random();
+			if (ent->groundentity) dir[2] = random()*0.8 + 0.2;
+			else dir[2] = random() > 0.5 ? random()*-1 : random();
+			fire_blaster(ent->owner, ent->s.origin, dir, 1, 300, EF_BLASTER, MOD_TARGET_BLASTER);
+		}
+	}
+	//RMKMOD END
 
 	G_FreeEdict (ent);
 }
@@ -617,6 +644,45 @@ void rocket_touch (edict_t *ent, edict_t *other, cplane_t *plane, csurface_t *su
 	G_FreeEdict (ent);
 }
 
+//RMKMOD
+void rocket_track(edict_t *ent) {
+	float	points;
+	edict_t	*targ = NULL, *bestTarg = NULL;
+	vec3_t	p, dir;
+	float length = 500;
+	float maxVel = 20;
+	//gi.centerprintf(ent->owner, "Tracking called");
+	while ((targ = findradius(targ, ent->s.origin, 500)) != NULL)
+	{
+		if (targ == ent->owner)
+			continue;
+		if (!targ->takedamage)
+			continue;
+		if (targ->health <= 0)
+			continue;
+
+		VectorSubtract(targ->s.origin, ent->s.origin, p);
+		float newLength = VectorLength(p);
+		if (newLength < length) {
+			length = newLength;
+			bestTarg = targ;
+			//VectorCopy(dir, p);
+		}
+	}
+
+	if (bestTarg != NULL) {
+		//gi.centerprintf(ent->owner, "Target Found");
+		VectorSubtract(bestTarg->s.origin, ent->s.origin, dir);
+		float vel = VectorLength(dir);
+		VectorScale(dir, 150/vel, dir);
+		for (int i = 0; i < 3; i++) {
+			ent->velocity[i] = dir[i];
+		}
+	}
+	ent->nextthink = level.time + FRAMETIME * 2;
+}
+//RMKMOD END
+
 void fire_rocket (edict_t *self, vec3_t start, vec3_t dir, int damage, int speed, float damage_radius, int radius_damage)
 {
 	edict_t	*rocket;
@@ -635,8 +701,8 @@ void fire_rocket (edict_t *self, vec3_t start, vec3_t dir, int damage, int speed
 	rocket->s.modelindex = gi.modelindex ("models/objects/rocket/tris.md2");
 	rocket->owner = self;
 	rocket->touch = rocket_touch;
-	rocket->nextthink = level.time + 8000/speed;
-	rocket->think = G_FreeEdict;
+	rocket->nextthink = level.time + FRAMETIME*4;
+	rocket->think = rocket_track;
 	rocket->dmg = damage;
 	rocket->radius_dmg = radius_damage;
 	rocket->dmg_radius = damage_radius;
@@ -744,15 +810,23 @@ void bfg_explode (edict_t *self)
 			VectorMA (ent->s.origin, 0.5, v, v);
 			VectorSubtract (self->s.origin, v, v);
 			dist = VectorLength(v);
-			points = self->radius_dmg * (1.0 - sqrt(dist/self->dmg_radius));
-			if (ent == self->owner)
-				points = points * 0.5;
+			VectorScale(v, 1 / dist, v);
+			//points = self->radius_dmg * (1.0 - sqrt(dist/self->dmg_radius));
+			//if (ent == self->owner)
+				//points = points * 0.5;
 
 			gi.WriteByte (svc_temp_entity);
 			gi.WriteByte (TE_BFG_EXPLOSION);
 			gi.WritePosition (ent->s.origin);
 			gi.multicast (ent->s.origin, MULTICAST_PHS);
-			T_Damage (ent, self, self->owner, self->velocity, ent->s.origin, vec3_origin, (int)points, 0, DAMAGE_ENERGY, MOD_BFG_EFFECT);
+
+			//RMKMOD
+			for (int i = 0; i < 3; i++) {
+				ent->velocity[i] = 1000*v[i];
+			}
+			//Commented this damage and the above points out
+			//T_Damage (ent, self, self->owner, self->velocity, ent->s.origin, vec3_origin, (int)points, 0, DAMAGE_ENERGY, MOD_BFG_EFFECT);
+			//RMKMOD END
 		}
 	}
 
@@ -818,7 +892,7 @@ void bfg_think (edict_t *self)
 		dmg = 10;
 
 	ent = NULL;
-	while ((ent = findradius(ent, self->s.origin, 256)) != NULL)
+	/*while ((ent = findradius(ent, self->s.origin, 256)) != NULL)
 	{
 		if (ent == self)
 			continue;
@@ -873,7 +947,7 @@ void bfg_think (edict_t *self)
 		gi.WritePosition (self->s.origin);
 		gi.WritePosition (tr.endpos);
 		gi.multicast (self->s.origin, MULTICAST_PHS);
-	}
+	}*/
 
 	self->nextthink = level.time + FRAMETIME;
 }

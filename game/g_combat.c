@@ -121,7 +121,9 @@ void Killed (edict_t *targ, edict_t *inflictor, edict_t *attacker, int damage, v
 		targ->touch = NULL;
 		monster_death_use (targ);
 	}
-
+	
+	attacker->bloodlust = 300;
+	gi.centerprintf(attacker, "Bloodlust Begins");
 	targ->die (targ, inflictor, attacker, damage, point);
 }
 
@@ -401,6 +403,37 @@ void T_Damage (edict_t *targ, edict_t *inflictor, edict_t *attacker, vec3_t dir,
 	}
 	meansOfDeath = mod;
 
+	//RMKMOD
+
+	//Freeze Glare - Railgun
+	if (mod == MOD_RAILGUN) {
+		targ->glarefreeze = 300;
+		return;
+	}
+
+	//Poison - Machinegun
+	else if (mod == MOD_MACHINEGUN) {
+		targ->poison += damage*60;
+		damage = 1;
+		//gi.centerprintf(attacker, "Inflicted Poison!");
+	}
+
+	//Fear - Thrown Grenade
+	else if (mod == MOD_HANDGRENADE || mod == MOD_HG_SPLASH) {
+		targ->fear = 240;
+	}
+
+	//Bloodlust - Vampiric Ability
+	if (attacker->bloodlust && attacker->client) {
+		damage *= 1.5;
+	}
+
+	//Focus - Vampiric Ability
+	if (targ->client && targ->invisibility) {
+		damage = 3 * damage / 4;
+	}
+	//RMKMOD END
+
 	// easy mode takes half damage
 	if (skill->value == 0 && deathmatch->value == 0 && targ->client)
 	{
@@ -493,7 +526,10 @@ void T_Damage (edict_t *targ, edict_t *inflictor, edict_t *attacker, vec3_t dir,
 
 
 		targ->health = targ->health - take;
-			
+		//RMKMOD
+		if (targ != attacker && targ->health > 0)
+			attacker->healthDrain += take / 2 * 60;
+		//RMKMOD END
 		if (targ->health <= 0)
 		{
 			if ((targ->svflags & SVF_MONSTER) || (client))

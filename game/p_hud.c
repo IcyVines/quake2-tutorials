@@ -380,6 +380,10 @@ void G_SetStats (edict_t *ent)
 	int			index, cells;
 	int			power_armor_type;
 
+	//RMKMOD
+	ent->client->ps.stats[STAT_BLOODLUST] = ent->bloodlust ? 1.5 : 0;
+	//RMKMOD END
+
 	//
 	// health
 	//

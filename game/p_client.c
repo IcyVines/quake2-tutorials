@@ -1655,6 +1655,104 @@ void ClientThink (edict_t *ent, usercmd_t *ucmd)
 			PlayerNoise(ent, ent->s.origin, PNOISE_SELF);
 		}
 
+		//RMKMOD
+		if (ent->doubleJump > 0 && ent->groundentity) {
+			ent->doubleJump = 0;
+			ent->gliding = 0;
+			//gi.centerprintf(ent, "Landed!\n");
+		} else if (ent->doubleJump == 0 && pm.cmd.upmove >= 10) {
+			ent->doubleJump = 1;
+			//gi.centerprintf(ent, "Pressed Jump on Ground!\n");
+		}
+		else if (ent->doubleJump == 1 && pm.cmd.upmove < 10) {
+			ent->doubleJump = 2;
+			//gi.centerprintf(ent, "In air, not jumping!\n");
+		} else if ((ent->doubleJump == 2) && pm.cmd.upmove >= 10) {
+			ent->doubleJump = 3;
+			ent->gliding = 0;
+			gi.sound(ent, CHAN_VOICE, gi.soundindex("*jump1.wav"), 1, ATTN_NORM, 0);
+			PlayerNoise(ent, ent->s.origin, PNOISE_SELF);
+			ent->velocity[2] = 350;
+			//gi.centerprintf(ent, "Jump pressed in air!\n");
+		}
+
+		#define DEG2RAD( a ) ( a * M_PI ) / 180.0F
+
+		if (ent->dashing == 120 || ent->clawswipe) {
+			ent->gliding = 0;
+			float yVel = -sin(DEG2RAD(ent->client->v_angle[0]));
+			int hView = ent->client->v_angle[1];
+			float xVel = cos(DEG2RAD(hView));
+			float zVel = sin(DEG2RAD(hView));
+			int clawbonus = ent->clawswipe ? ent->clawswipe : 1;
+			int aerialStop = (ent->groundentity) ? 1 : 2;
+			ent->velocity[0] = xVel * 1000 * clawbonus / aerialStop;
+			ent->velocity[1] = zVel * 1000 * clawbonus / aerialStop;
+			//ent->velocity[2] = yVel * 500;
+		}
+		else if (ent->gliding) {
+			ent->velocity[2] = -5;
+		}
+
+		if (ent->dashing > 0) {
+			ent->dashing -= 1;
+			//if (ent->dashing == 0) gi.centerprintf(ent, "Dashing Available!");
+		}
+
+		if (ent->clawswipe > 0) {
+			ent->clawswipe = 0;
+		}
+
+		if (ent->invisibility) {
+			gi.centerprintf(ent, "Focusing");
+			ent->invisibility -= 1;
+		}
+		else if (ent->invisCooldown) {
+			if (ent->invisCooldown == 600) gi.centerprintf(ent, "Focus Lost");
+			ent->invisCooldown -= 1;
+			if (ent->invisCooldown == 0) gi.centerprintf(ent, "Focus Available");
+		}
+
+		if (ent->healthDrain > 0) {
+			if (ent->healthDrain % 60 == 0 && ent->health < 100) {
+				ent->health += 1;
+			}
+			ent->healthDrain -= 1;
+		}
+
+		if (ent->poison > 0) {
+			if (ent->poisonBool == 0) {
+				ent->poisonBool = 1;
+				gi.centerprintf(ent, "POISONED!!!");
+			}
+			if (ent->poison % 60 == 0) {
+				if (ent->health > 2) ent->health -= 1;
+			}
+			ent->poison -= 1;
+			if (ent->poison == 0) {
+				ent->poisonBool = 0;
+				gi.centerprintf(ent, "Poison cured!");
+			}
+		}
+
+		if (ent->glarefreeze) {
+			VectorScale(ent->velocity, 0, ent->velocity);
+			ent->glarefreeze -= 1;
+		}
+
+		if (ent->fear > 0) {
+			ent->client->ps.fov = 50;
+			ent->fear -= 1;
+			if (ent->fear == 0) ent->client->ps.fov = 90;
+		}
+
+		if (ent->bloodlust > 0) {
+			ent->bloodlust -= 1;
+			if (ent->bloodlust == 0) gi.centerprintf(ent, "Bloodlust Ends");
+		}
+
+		//RMKMOD END
+
 		ent->viewheight = pm.viewheight;
 		ent->waterlevel = pm.waterlevel;
 		ent->watertype = pm.watertype;

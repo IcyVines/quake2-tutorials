@@ -1109,5 +1109,19 @@ struct edict_s
 	// common data blocks
 	moveinfo_t		moveinfo;
 	monsterinfo_t	monsterinfo;
+
+	int			doubleJump;
+	int			dashing;
+	int			clawswipe;
+	int			gliding;
+	int			invisibility;
+	int			invisCooldown;
+	int			healthDrain;
+	int			bloodlust;
+	int			glarefreeze;
+	int			fear;
+	int			poison;
+	int			poisonBool;
+	float		grenadeTime;
 };
 

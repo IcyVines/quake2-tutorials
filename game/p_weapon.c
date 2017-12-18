@@ -1225,6 +1225,10 @@ void weapon_shotgun_fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index]--;
+
+	//RMKMOD
+	ent->clawswipe = 1;
+	//RMKMOD END
 }
 
 void Weapon_Shotgun (edict_t *ent)
@@ -1279,6 +1283,10 @@ void weapon_supershotgun_fire (edict_t *ent)
 
 	if (! ( (int)dmflags->value & DF_INFINITE_AMMO ) )
 		ent->client->pers.inventory[ent->client->ammo_index] -= 2;
+
+	//RMKMOD
+	ent->clawswipe = 2;
+	//RMKMOD END
 }
 
 void Weapon_SuperShotgun (edict_t *ent)
@@ -1323,6 +1331,11 @@ void weapon_railgun_fire (edict_t *ent)
 		damage *= 4;
 		kick *= 4;
 	}
+
+	//RMKMOD Freeze Glare: Damage Reduced, Kick Reduced
+	damage = 0;
+	kick = 0;
+	//RMKMOD END
 
 	AngleVectors (ent->client->v_angle, forward, right, NULL);
 

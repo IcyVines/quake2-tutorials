@@ -366,6 +366,13 @@ void M_MoveFrame (edict_t *self)
 	move = self->monsterinfo.currentmove;
 	self->nextthink = level.time + FRAMETIME;
 
+	//RMKMOD
+	if (self->glarefreeze > 0) {
+		self->nextthink += 6;
+		self->glarefreeze = 0;
+	}
+	//RMKMOD END
+
 	if ((self->monsterinfo.nextframe) && (self->monsterinfo.nextframe >= move->firstframe) && (self->monsterinfo.nextframe <= move->lastframe))
 	{
 		self->s.frame = self->monsterinfo.nextframe;
